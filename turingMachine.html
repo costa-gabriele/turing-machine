@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+
+<html lang="en">
+	
+	<head>
+		
+		<title>Turing machine</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		
+		<style>
+			
+			html, body {
+				margin: 0;
+				padding: 0;
+				color: #222;
+				font-family: Monospace;
+				
+				--black: #222;
+				--yellow: #ffffde;
+				--light-blue: #d9f4ff;
+				--light-green: #dcffd6;
+				--light-orange: #ffdfcb;
+				--light-red: #ffd8db;
+			}
+			
+			button, input[type="submit"] {
+				cursor: pointer;
+			}
+			
+			#cont {
+				width: 80%;
+				margin: auto;
+			}
+			
+			.section {
+				margin-bottom: 2em;
+			}
+			
+			.terminology {
+				font-style: italic;
+			}
+			
+			.syntax {
+				font-weight: 600;
+			}
+			
+			#configurations table, #configurations th, #configurations td {
+				padding: 0.6em 1.2em;
+				border: thin solid var(--black);
+				border-collapse: collapse;
+			}
+			
+			#configurations th {
+				background: #fafafa;
+				font-weight: 600;
+			}
+			
+			#add_cfg_submit, .rmv_cfg_button {
+				border: thin solid var(--black);
+				border-radius: 1em;
+				font-family: Monospace;
+				color: var(--black);
+				font-weight: 600;
+			}
+			
+			#add_cfg td {
+				background: #ffffde;
+			}
+			
+			#add_cfg_submit {
+				background: var(--light-green);
+			}
+			
+			.rmv_cfg_button {
+				background: var(--light-orange);
+			}
+			
+			.command_row {
+				display: flex;
+				flex-direction: row;
+				align-items: center;
+				margin: 0.8em 0;
+			}
+			
+			.command_row input, .command_row select, .command_row button {
+				margin: 0 0.8em 0 0;
+				padding: 0.4em 0.6em;
+				border: thin solid var(--black);
+				text-wrap: nowrap;
+			}
+			
+			.command_row label {
+				margin: 0 0.8em 0 0;
+				font-weight: 600;
+			}
+			
+			#cmd_state_select {
+				background: #fff;
+			}
+			
+			#cmd_execute_button {
+				background: var(--light-blue);
+			}
+			
+			#cmd_start_button {
+				background: var(--light-green);
+			}
+			
+			#cmd_stop_button {
+				background: var(--light-orange);
+			}
+			
+			#cmd_arrest_button {
+				background: var(--light-red);
+			}
+			
+			#cmd_clear_button {
+				background: var(--yellow);
+			}
+			
+			#machine_canvas {
+				margin: 0.6em 0;
+				border: thin solid var(--black);
+			}
+			
+			#computed_sequence {
+				display: flex;
+				align-items: center;
+				width: 602px; /* Account for borders of canvas (can't set border-box to canvas) */
+				height: 50px;
+				padding: 1em;
+				box-sizing: border-box;
+				background: #fafafa;
+				border: thin solid var(--black);
+				overflow-x: scroll;
+				text-wrap: nowrap;
+				font-size: 1.2em;
+			}
+			
+			#monitor {
+				margin: 1em 0;
+				font-size: 1.4em;
+			}
+			
+			#expimp_export_button {
+				background: var(--light-blue);
+			}
+			
+			#expimp_import_button {
+				background: var(--light-green);
+			}
+			
+			#expimp_textarea {
+				width: 602px; /* Account for borders of canvas (can't set border-box to canvas) */
+				height: 200px;
+				margin: 0.6em 0;
+				padding: 1em;
+				box-sizing: border-box;
+				border: thin solid var(--black);
+			}
+			
+			#expimp_textarea:focus {
+				outline: none;
+			}
+			
+		</style>
+		
+	</head>
+	
+	<body>
+		
+		<div id="cont">
+			
+			<h1>Turing machine</h1>
+			
+			<!-- Instructions -->
+			<div id="instructions" class="section">
+				
+				<h2>Instructions</h2>
+				
+				<p>
+					To set up the machine, define the states (<span class="terminology">m-configurations</span> in Turing's terminology) by inserting rows in the table below.<br />
+					Each row defines the behaviour of a couple &lt;state, character&gt;, so a state is defined by all the rows in which it appears.
+				</p>
+				<p>The allowed operations are:</p>
+				<ul>
+					<li> <span class="syntax">L</span>: move left</li>
+					<li> <span class="syntax">R</span>: move right</li>
+					<li> <span class="syntax">P*</span>: print (the star represents a string of up to 3 characters)</li>
+					<li> <span class="syntax">E</span>: erase scanned character</li>
+				</ul>
+				<p>
+					The reserved keywords <span class="syntax">None</span> and <span class="syntax">Any</span> can be used to designate an empty square or any input (including the empty square), respectively.<br />
+					The rule for any character is checked after having searched the rules for a specific input:<br />
+					hence, if used in combination with other rules, <span class="syntax">Any</span> can function as an "Else".
+				</p>
+				<p>
+					The tape is infinite only to the right.
+				</p>
+				
+			</div>
+			<!-- /Instructions -->			
+			
+			<!-- Configurations -->
+			<div id="configurations" class="section">
+				
+				<h2>Configurations</h2>
+				
+				<form id="cfg_form" name="cfg_form" method="post">
+					<table id="cfg_table">
+						<thead>
+							<tr>
+								<th scope="col">+/-</th>
+								<th scope="col">State</th>
+								<th scope="col">Character</th>
+								<th scope="col">Operations</th>
+								<th scope="col">Next state</th>
+							</tr>
+						</thead>
+						<tbody id="add_cfg_row">
+							<tr id="add_cfg">
+								<td><input id="add_cfg_submit" name="add_cfg_submit" type="submit" value="+" /></td>
+								<td><input id="add_cfg_state" name="add_cfg_state" type="text" /></td>
+								<td><input id="add_cfg_char" name="add_cfg_char" type="text" /></td>
+								<td><input id="add_cfg_oper" name="add_cfg_oper" type="text" /></td>
+								<td><input id="add_cfg_next" name="add_cfg_next" type="text" /></td>
+							</tr>
+						</tbody>
+						<tbody id="cfg_rows">
+						</tbody>
+					</table>
+				</form>
+				
+			</div>
+			<!-- /Configurations -->
+			
+			<!-- Computation -->
+			<div id="computation" class="section">
+				
+				<h2>Computation</h2>
+				
+				<form id="cmd_form" name="cmd_form">
+					<div class="command_row">
+						<label for="cmd_state_select">State</label>
+						<select id="cmd_state_select" name="cmd_state_select"></select>
+						<label for="cmd_speed_input">Speed (ms)</label>
+						<input id="cmd_speed_input" name="cmd_speed_input" type="number" />
+					</div>
+					<div class="command_row">
+						<button id="cmd_execute_button" type="button" title="Execute current state">Execute state</button>
+						<button id="cmd_start_button" type="button" title="Start the machine">Start</button>
+						<button id="cmd_stop_button" type="button" title="Stop the machine when the execution of the current state is completed">Stop</button>
+						<button id="cmd_arrest_button" type="button" title="Arrest immediatly the machine">Arrest</button>
+						<button id="cmd_clear_button" type="button" title="Clear tape and reset head">Clear</button>
+					</div>
+				</form>
+				
+				<canvas id="machine_canvas" width="600" height="100">
+				</canvas>
+				
+				<pre id="computed_sequence" >
+				</pre>
+				
+				<div id="monitor">
+					<span id="monitor_sign">&gt;&gt;</span>
+					<span id="monitor_msg"></span>
+				</div>
+				
+			</div>
+			<!-- /Computation -->
+			
+			<!-- Export-Import -->
+			<div id="export_import" class="section">
+				
+				<h2>Export and import</h2>
+				
+				<form id="expimp_form" name="expimp_form">
+					<div class="command_row">
+						<button id="expimp_export_button" type="button" title="Export machine">Export machine</button>
+						<button id="expimp_import_button" type="button" title="Import machine">Import machine</button>
+					</div>
+					<textarea id="expimp_textarea" name="expimp_textarea"></textarea>
+				</form>
+				
+				<p id="expimp_msg"></p>
+				
+			</div>
+			<!-- /Export-Import -->
+			
+		</div>
+		
+		<script>
+			
+			// HELPER OBJECTS
+			
+			class StateDetail {
+			
+				constructor(pOperations, pNext) {
+					this.operations = pOperations;
+					this.next = pNext;
+				}
+				
+			}
+			
+			class State {
+				
+				constructor(pName, pDetail = [], pfInitial = 0) {
+					this.name = pName;
+					this.detail = {};
+					this.fInitial = pfInitial;
+					this.addDetail(pDetail);
+				}
+				
+				static cast(obj) {
+					let s = new State(obj.name);
+					Object.assign(s, obj);
+					return s;
+				}
+				
+				addDetail(pDetail = []) {
+				
+					for(let detail of pDetail) {
+					
+						let character = detail[0].substr(0,4);
+						let operations = detail[1];
+						let nextState = detail[2];
+						
+						this.detail[character] = new StateDetail (
+							operations,
+							nextState
+						);
+						
+					}
+					
+				}
+				
+			}
+			
+			// /HELPER OBJECTS
+			
+			
+			// TURING MACHINE
+			
+			class TuringMachine {
+				
+				constructor(pRenderer) {
+					
+					this.renderer = pRenderer;
+					
+					this.tape = new Array();
+					this.states = {};
+					this.configuration = {
+						"state": "",
+						"position": 0
+					};
+					
+					this.fMoving = false;
+					this.fActive = false;
+					this.fArrested = false;
+					this.speed = 500; // Milliseconds
+					this.cycleLimit = 1000;
+				
+				}
+				
+				cycle() {return new Promise(r => setTimeout(r, this.speed))}
+				
+				setInitialState(pStateName) {
+					this.configuration.state = pStateName;
+					this.renderer.setSelectedStateOption(pStateName);
+				}
+				
+				addState(pState) {
+					this.states[pState.name] = pState;
+					this.renderer.updateConfigurations(this.states);
+					if(pState.fInitial == 1 || !this.configuration.state) {
+						this.setInitialState(pState.name);
+					}
+				}
+				
+				init() {
+					
+					this.fArrested = true;
+					this.fActive = false;
+					
+					this.tape = new Array();
+					this.configuration.position = 0;
+					
+					for(let stateName in this.states) {
+						if(this.states[stateName].fInitial == 1) {
+							this.setInitialState(stateName);
+							break;
+						}
+					}
+					
+					//this.fArrested = false;
+					
+					this.renderer.drawTape(this.tape, this.configuration.position);
+					this.renderer.printTape(this.tape);
+					this.renderer.writeMonitor("");
+					
+					
+					return true;
+					
+				}
+				
+				async move(pOperation) {
+					
+					if(this.fMoving || this.fArrested) {
+						return false;
+					}
+					
+					this.fMoving = true;
+					
+					let action = pOperation.substr(0,1).toUpperCase();
+					let option = pOperation.substr(1).trim();
+					
+					this.renderer.writeMonitor(action + option);
+					
+					switch(action) {
+						
+						case "L": // Move left
+							this.configuration.position -= 1;
+							if(this.configuration.position < 0) {
+								this.error("The head moved to a negative square.");
+								this.configuration.position = 0;
+								return false;
+							}
+							break;
+						case "R": // Move right
+							this.configuration.position += 1;
+							break;
+						case "P": // Print
+							let character = option.substr(0,3);
+							this.tape[this.configuration.position] = character;
+							break;
+						case "E": // Erase
+							this.tape[this.configuration.position] = null;
+							break;
+						default:
+							this.error(action + ": invalid operation!");
+							return false;
+							
+					}
+					
+					this.renderer.drawTape(this.tape, this.configuration.position);
+					await this.cycle();
+					this.renderer.writeMonitor("");
+					this.fMoving = false;
+					
+				}
+				
+				async executeCurrentState() {
+					
+					if(this.fMoving) {
+						return false;
+					}
+					
+					this.fActive = true;
+					
+					if(!Object.hasOwn(this.states, this.configuration.state)) {
+						return false;
+					}
+					
+					let state = this.configuration.state;
+					
+					while(this.configuration.state == state) {
+						
+						if(this.fArrested) {
+							break;
+						}
+						
+						let character = this.tape[this.configuration.position] || "None";
+						let stateDetail = this.states[this.configuration.state].detail[character] || this.states[this.configuration.state].detail["Any"] || null;
+						
+						if(!stateDetail) {
+							this.error("Current state has no behaviour defined for the scanned character.");
+							return false;
+						}
+						
+						let operations = stateDetail.operations;
+						let nextState = stateDetail.next;
+						
+						for(let i in operations) {
+							await this.move(operations[i]);
+						}
+						
+						this.renderer.printTape(this.tape);
+						
+						if(!this.fArrested) { // Machine can have been arrested in the meantime
+							
+							if(Object.hasOwn(this.states, nextState)) {
+								this.configuration.state = nextState;
+								this.renderer.setSelectedStateOption(nextState);
+							} else {
+								this.error("State " + nextState + " is not defined.");
+								return false;
+							}
+							
+						}
+						
+					}
+					
+					return true;
+					
+				}
+				
+				async start() {
+					
+					this.fActive = true;
+					this.fArrested = false;
+					
+					let i = 0;
+					while(this.fActive && i < this.cycleLimit) {
+						await this.executeCurrentState();
+						i++;
+					}
+					
+				}
+				
+				error(pMessage) {
+					if(this.renderer) {
+						this.renderer.writeMonitor(pMessage);
+					}
+					this.fActive = false;
+					this.fMoving = false;
+				}
+				
+				export() {
+					try {
+						let string = JSON.stringify(this.states);
+						this.renderer.writeExpImpMessage("The machine was succesfully exported.");
+						return string;
+					} catch(error) {
+						this.renderer.writeExpImpMessage("An error occurred while exporting the machine.");
+						return false;
+					}
+				}
+				
+				import(pJson) {
+					
+					try {
+						let states = JSON.parse(pJson);
+						// Cast objects to State
+						for(name in states) {
+							states[name] = State.cast(states[name]);
+						}
+						this.states = states;
+						this.init();
+						this.renderer.writeExpImpMessage("The machine was succesfully imported.");
+					} catch(error) {
+						this.renderer.writeExpImpMessage("An error occurred while importing the machine.");
+					}
+					
+				}
+								
+			}
+			
+			// /TURING MACHINE
+			
+			
+			// RENDERER
+			
+			class Renderer {
+				
+				constructor() {
+					
+					this.context = null;
+					this.cfgBody = null;
+					this.stateSelector = null;
+					this.speedInput = null;
+					this.computedSequence = null;
+					this.monitorMsg = null;
+					this.expImpMsg = null;
+					
+					this.squareSize = 100;
+					
+				}
+				
+				init() {
+					
+					this.width = this.context.canvas.width;
+					this.height = this.context.canvas.height;
+					this.mx = this.width / 2 - this.squareSize / 2;
+					this.my = this.height / 2 - this.squareSize / 2;
+					
+					this.drawTape([], 0);
+					
+				}
+				
+				drawHead() {
+					this.context.lineWidth = 6;
+					this.context.strokeRect(this.width / 2 - this.squareSize / 2, this.height / 2 - this.squareSize / 2, this.squareSize, this.squareSize);
+				}
+				
+				drawTape(pTape, pPosition) {
+					
+					this.context.clearRect(0, 0, this.width, this.height);
+					this.drawHead();
+					this.context.lineWidth = 1;
+					
+					let nSquaresHalf = Math.floor((this.width / 2) / this.squareSize);
+					let firstVisibleSquare = Math.max(pPosition - nSquaresHalf, 0);
+					
+					for(let i = firstVisibleSquare; i <= pPosition + nSquaresHalf; i++) {
+						
+						let offset = (i - pPosition) * this.squareSize;
+						
+						this.context.strokeRect(this.mx + offset, this.my, this.squareSize, this.squareSize);
+						this.context.font = "20px Monospace";
+						this.context.textBaseline = "bottom";
+						this.context.textAlign = "right";
+						this.context.fillText(i, this.mx + offset + this.squareSize, this.my + this.squareSize);
+						this.context.font = "40px Monospace";
+						this.context.textBaseline = "middle";
+						this.context.textAlign = "center";
+						this.context.fillText(pTape[i] || "", this.mx + offset + this.squareSize / 2, this.my + this.squareSize / 2);
+						
+					}
+					
+				}
+				
+				updateConfigurations(pStates) {
+					
+					if(!(this.cfgBody && this.stateSelector)) {
+						return false;
+					}
+					
+					this.cfgBody.replaceChildren();
+					this.stateSelector.replaceChildren();
+					
+					let n = 1;
+					
+					for(let stateName in pStates) {
+						
+						let state = pStates[stateName];
+						
+						if(!(state instanceof State)) continue;
+						
+						// Update state selector
+						let stateHtml = "<option name=\"" + stateName + "\">" + stateName + "</option>";
+						this.stateSelector.insertAdjacentHTML("beforeend", stateHtml);
+						
+						// Update configuration table
+						for(let character in state.detail) {
+							let stateDetail = state.detail[character];
+							let operationString = stateDetail.operations.join(", ");
+							this.cfgBody.insertAdjacentHTML (
+								"beforeend",
+								"<tr>" +
+								"<td><button id=\"rmv_cfg_button_" + n + "\" class=\"rmv_cfg_button\" name=\"rmv_cfg_button_" + n + "\" type=\"button\" data-state=\"" + state.name + "\" data-char=\"" + character + "\">-</button></td>" +
+								"<td>" + stateName + "</td>" +
+								"<td>" + character + "</td>" +
+								"<td>" + operationString + "</td>" +
+								"<td>" + stateDetail.next + "</td>" +
+								"</tr>"
+							);
+							n++;
+						}
+						
+					}
+						
+				}
+				
+				setSelectedStateOption(pStateName) {
+					
+					if(this.stateSelector) {
+						this.stateSelector.value = pStateName;
+						return true;
+					} else {
+						return false;
+					}
+					
+				}
+				
+				printTape(pTape) {
+					
+					if(this.computedSequence) {
+						this.computedSequence.textContent = "";
+						for(let i = 0; i < pTape.length; i++) {
+							let string = pTape[i] || " ";
+							this.computedSequence.textContent += string;
+							this.computedSequence.scrollLeft = this.computedSequence.scrollLeftMax;
+						}
+						return true;
+					} else {
+						return false;
+					}
+					
+				}
+				
+				writeMonitor(pMessage) {
+					if(this.monitorMsg) {
+						this.monitorMsg.textContent = pMessage;
+						return true;
+					} else {
+						return false;
+					}
+				}
+				
+				writeExpImpMessage(pMessage) {
+					if(this.expImpMsg) {
+						this.expImpMsg.textContent = pMessage;
+						return true;
+					} else {
+						return false;
+					}
+				}
+				
+				
+			}
+			
+			// /RENDERER
+						
+			var r = new Renderer();
+			var m = new TuringMachine(r);
+			
+			console.log("TuringMachine m:");
+			console.log(m);
+			
+			////////
+			
+			window.onload = function() {
+				
+				// Configurations form
+				
+				var cfgForm = document.getElementById("cfg_form");
+				var stateSelector = document.getElementById("cmd_state_select");
+				
+				cfgForm.addEventListener (
+				
+					"submit",
+					function(e) {
+					
+						e.preventDefault();
+						cfgData = new FormData(cfgForm);
+						
+						let stateName = cfgData.get("add_cfg_state");
+						let character = cfgData.get("add_cfg_char");
+						let operations = cfgData.get("add_cfg_oper").split(",");
+						let nextState = cfgData.get("add_cfg_next");
+						
+						if(stateName && character && nextState) {
+							
+							let sd = [[character, operations, nextState]];
+							
+							if(Object.hasOwn(m.states, stateName)) {
+								m.states[stateName].addDetail(sd);
+							} else {
+								let s = new State(stateName, sd);
+								m.addState(s);
+							}
+							
+							r.updateConfigurations(m.states);
+							cfgForm.reset();
+							
+						}
+						
+					}
+					
+				);
+								
+				cfgForm.addEventListener (
+				
+					"click",
+					function(e) {
+					
+						if(e.target.className == "rmv_cfg_button") {
+							
+							let stateName = e.target.dataset.state;
+							let character = e.target.dataset.char;
+							let fUpdateState = false;
+							
+							delete m.states[stateName].detail[character];
+							if(Object.keys(m.states[stateName].detail).length == 0) {
+								delete m.states[stateName];
+								if(m.configuration.state == stateName) {
+									fUpdateState = true;
+								}
+							}
+							
+							r.updateConfigurations(m.states);
+							
+							// If the configuration state was removed,
+							// the state that happens to be the new value
+							// of the selector is set as the new state.
+							if(fUpdateState) {
+								m.configuration.state = stateSelector.value;
+							}
+							
+						}
+						
+					}
+					
+				);
+				
+				// Machine command form
+								
+				stateSelector.addEventListener (
+					"change",
+					function(e) {
+						m.configuration.state = stateSelector.value;
+					}
+				);
+				
+				var speedInput = document.getElementById("cmd_speed_input");
+				
+				speedInput.value = m.speed;
+				speedInput.style.width = (speedInput.value.length + 5) + "ch";
+				speedInput.addEventListener (
+					"change",
+					function(e) {
+						speedInput.value = Math.max(speedInput.value, 1);
+						speedInput.style.width = (speedInput.value.length + 5) + "ch";
+						m.speed = speedInput.value;
+					}
+				);
+				
+				var cmdExecuteButton = document.getElementById("cmd_execute_button");
+				
+				cmdExecuteButton.addEventListener (
+					"click",
+					function(e) {
+						m.fArrested = false;
+						m.executeCurrentState();
+					}
+				);
+				
+				var cmdStartButton = document.getElementById("cmd_start_button");
+				
+				cmdStartButton.addEventListener (
+					"click",
+					function(e) {
+						m.start();
+					}
+				);
+				
+				var cmdStopButton = document.getElementById("cmd_stop_button");
+				
+				cmdStopButton.addEventListener (
+					"click",
+					function(e) {
+						m.fActive = false;
+					}
+				);
+				
+				var cmdArrestButton = document.getElementById("cmd_arrest_button");
+				
+				cmdArrestButton.addEventListener (
+					"click",
+					function(e) {
+						m.fArrested = true;
+					}
+				);
+				
+				var cmdClearButton = document.getElementById("cmd_clear_button");
+				
+				cmdClearButton.addEventListener (
+					"click",
+					function(e) {
+						m.init();
+					}
+				);
+				
+				// Renderer initialization - Canvas
+				
+				var canvas = document.getElementById("machine_canvas");
+				var context = canvas.getContext("2d");
+				var pixelRatio = window.devicePixelRatio || 1;
+				var canvasPosition = canvas.getBoundingClientRect();
+				
+				canvas.style.width = canvas.width + "px";
+				canvas.style.height = canvas.height + "px";
+				canvas.width *= 2;
+				canvas.height *= 2;
+				context.translate(0.5, 0.5);
+				//context.scale(pixelRatio, pixelRatio);
+				
+				r.context = context;
+				r.init();
+				
+				// Renderer initialization - UI
+				
+				let cfgTable = document.getElementById("cfg_table");
+				let cfgBody = cfgTable.querySelector("tbody#cfg_rows");
+				let computedSequence = document.getElementById("computed_sequence");
+				let monitorMsg = document.getElementById("monitor_msg");
+				let expImpMsg = document.getElementById("expimp_msg");
+				
+				r.cfgBody = cfgBody;
+				r.stateSelector = stateSelector;
+				r.speedInput = speedInput;
+				r.computedSequence = computedSequence;
+				r.monitorMsg = monitorMsg;
+				r.expImpMsg = expImpMsg;
+												
+				// Export/Import form
+				
+				var expimpExportButton = document.getElementById("expimp_export_button");
+				var expimpImportButton = document.getElementById("expimp_import_button");
+				var expimp_textarea = document.getElementById("expimp_textarea");
+				
+				expimpExportButton.addEventListener (
+					"click",
+					function(e) {
+						let ser = m.export();
+						expimp_textarea.value = ser;
+					}
+				);
+				
+				expimpImportButton.addEventListener (
+					"click",
+					function(e) {
+						m.import(expimp_textarea.value);
+						expimp_textarea.value = "";
+						r.updateConfigurations(m.states);
+					}
+				);
+				
+				// Set up example machine that prints 001011011101111011111...
+				
+				let sdB = [
+					[
+						"None",
+						["Pə", "R", "Pə", "R", "P0", "R", "R", "P0", "L", "L"],
+						"o"
+					]
+				];
+				let sB = new State("b", sdB, 1);
+				m.addState(sB);
+				
+				let sdO = [
+					[
+						"1",
+						["R", "Px", "L", "L", "L"],
+						"o"
+					],
+					[
+						"0",
+						[],
+						"q"
+					]
+				];
+				let sO = new State("o", sdO);
+				m.addState(sO);
+				
+				let sdQ = [
+					[
+						"1",
+						["R", "R"],
+						"q"
+					],
+					[
+						"0",
+						["R", "R"],
+						"q"
+					],
+					[
+						"None",
+						["P1", "L"],
+						"p"
+					]
+				];
+				let sQ = new State("q", sdQ);
+				m.addState(sQ);
+				
+				let sdP = [
+					[
+						"x",
+						["E", "R"],
+						"q"
+					],
+					[
+						"ə",
+						["R"],
+						"f"
+					],
+					[
+						"None",
+						["L", "L"],
+						"p"
+					]
+				];
+				let sP = new State("p", sdP);
+				m.addState(sP);
+				
+				let sdF = [
+					[
+						"Any",
+						["R", "R"],
+						"f"
+					],
+					[
+						"None",
+						["P0", "L", "L"],
+						"o"
+					]
+				];
+				let sF = new State("f", sdF);
+				m.addState(sF);
+				
+				r.updateConfigurations(m.states);
+				
+			}
+			
+		</script>
+		
+	</body>
+
+</html>
